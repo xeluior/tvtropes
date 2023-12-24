@@ -14,7 +14,7 @@
 8. These pages will have a title found in an `h1` with the `.entry-title` class
 8. The title `h1` will also have a `strong` tag with "Namespace /" prepended to the text if it is not in the Main namespace
 9. A link should either be either Broken 404, Redirect 302, or exist 2xx
-9. A Redirect will have a `div` with the `.aka-title` in it's title `h1`
+9. A Redirect will have a `div` with the `.aka-title` in it's title `h1` (some dont?)
 10. A Redirect will change the link to (pmwiki.php/Namespace/Identifier?from=OldNamespace.OldIdentifier)
 11. There is only one definitive link that multiple redirects can send to
 12. Pages that exist have multiple `.twikilink`s on them that serve as graph edges

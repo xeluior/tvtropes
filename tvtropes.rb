@@ -32,13 +32,13 @@ def get(url)
   response = Net::HTTP.get_response(url)
   while response.is_a? Net::HTTPForbidden
     # we are being rate limited
-    sleep(sleep_timer)
-    sleep_timer += 60
+    sleep sleep_timer
+    sleep_timer = (sleep_timer + 60) % 600
     response = Net::HTTP.get_response(url)
   end
 
   response
-rescue Errno::ECONNREFUSED
+rescue Errno::ECONNREFUSED | SocketError
   puts url
   Thread.current.kill
 end
@@ -106,12 +106,19 @@ wiki_worker = lambda do
 
   # parse title
   html = Nokogiri.parse(response.body)
-  data[:title] = if redirect_count.positive?
-                   html.at_css('.aka-title').content.strip.sub('aka: ', '')
+  data[:title] = if redirect_count.positive? && !(aka_title = html.at_css('.aka-title')).nil?
+                   aka_title.content.strip.sub('aka: ', '')
                  else
-                   header = html.at_css('.entry-title').children.select { |c| c.name == 'text' }
-                   header[1].content.strip
+                   header = html.at_css('.entry-title')&.children&.select { |c| c.name == 'text' }
+                   header[1]&.content&.strip unless header.nil?
                  end
+
+  # escape early if this is an alias, links will be read on the main page
+  if redirect_count.positive?
+    @wiki_q.push escape(response.uri.to_s.sub(response.uri.query, ''))
+    @sql_q.push data
+    return
+  end
 
   # parse links
   data[:links] = Set.new
@@ -128,8 +135,10 @@ sql_worker = lambda do
   while @sql_q.size.positive?
     data = @sql_q.pop
     links = data.delete(:links)
-    db.execute 'insert into pages values ( ?, ?, ?, ?, ?, ? )', data.values
-    links.each do |link|
+    db.execute 'insert into pages values ( ?, ?, ?, ?, ?, ? )',
+               [data[:namespace], data[:id], data[:response], data[:title], data[:alias_of_namespace],
+                data[:alias_of_id]]
+    links&.each do |link|
       db.execute 'insert into links values ( ?, ?, ?, ? )', [data[:namespace], data[:id], link[:namespace], link[:id]]
     end
   end
@@ -167,15 +176,15 @@ end
 while total_waiting.positive?
   print <<~STATS
     Queues
-      Articlecount: #{@articlecount_q.size}
-      Namespaces: #{@namespace_q.size}
-      Pages: #{@wiki_q.size}
-      SQL: #{@sql_q.size}
+      Articlecount: #{@articlecount_q.size.to_s.rjust 2}
+      Namespaces: #{@namespace_q.size.to_s.rjust 4}
+      Pages: #{@wiki_q.size.to_s.rjust 9}
+      SQL: #{@sql_q.size.to_s.rjust 11}
     Threads (Max #{CPU_THREADS})
-      Articlecount: #{@art_thrs.select(&:alive?).count}
-      Namespaces: #{@ns_thrs.select(&:alive?).count}
-      Pages: #{@wiki_thrs.select(&:alive?).count}
-      SQL: #{@sql_thr.alive? ? '1' : '0'}\r\e[10A
+      Articlecount: #{@art_thrs.select(&:alive?).count.to_s.rjust 2}
+      Namespaces:   #{@ns_thrs.select(&:alive?).count.to_s.rjust 2}
+      Pages:        #{@wiki_thrs.select(&:alive?).count.to_s.rjust 2}
+      SQL:           #{@sql_thr.alive? ? '1' : '0'}\r\e[10A
   STATS
   $stdout.flush
 
