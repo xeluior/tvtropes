@@ -46,12 +46,11 @@ def escape(url)
 end
 
 def get(url)
-  sleep_timer = 60 # seconds
   response = Net::HTTP.get_response(url)
   while response.is_a? Net::HTTPForbidden
     # we are being rate limited
+    sleep_timer = Random.rand(0..600)
     sleep sleep_timer
-    sleep_timer = (sleep_timer + 60) % 600
     response = Net::HTTP.get_response(url)
   end
 
