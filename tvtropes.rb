@@ -2,8 +2,9 @@ require 'net/http'
 require 'nokogiri'
 require 'sqlite3'
 require 'etc'
+require 'concurrent-ruby'
 
-CPU_THREADS = Etc.nprocessors
+MAX_THREADS = 512
 PROTO = 'https://'.freeze
 ROOT_URL = 'tvtropes.org'.freeze
 
@@ -12,7 +13,7 @@ ROOT_URL = 'tvtropes.org'.freeze
 @wiki_q = Queue.new
 @sql_q = Queue.new
 
-visited_pages = Set.new
+visited_pages = Concurrent::Set.new
 db = SQLite3::Database.open 'tvtropes.db'
 page_stmt = db.prepare 'insert into pages values ( ?, ?, ?, ?, ?, ? )'
 link_stmt = db.prepare 'insert into links values ( ?, ?, ?, ? )'
@@ -192,7 +193,7 @@ def awake
   threads.reject { |thr| thr.status == 'sleep' }
 end
 
-while total_waiting.positive?
+while total_waiting.positive? || total_running.positive?
   print <<~STATS
     Queues
       Articlecount: #{@articlecount_q.size.to_s.rjust 2}
@@ -200,10 +201,10 @@ while total_waiting.positive?
       Pages: #{@wiki_q.size.to_s.rjust 9}
       SQL: #{@sql_q.size.to_s.rjust 11}
       Visited: #{visited_pages.size.to_s.rjust 7}
-    Threads (Max #{CPU_THREADS})
+    Threads
       Articlecount: #{@art_thrs.select(&:alive?).count.to_s.rjust 2}
-      Namespaces:   #{@ns_thrs.select(&:alive?).count.to_s.rjust 2}
-      Pages:        #{@wiki_thrs.select(&:alive?).count.to_s.rjust 2}
+      Namespaces: #{@ns_thrs.select(&:alive?).count.to_s.rjust 4}
+      Pages: #{@wiki_thrs.select(&:alive?).count.to_s.rjust 9}
       SQL:           #{@sql_thr.alive? ? '1' : '0'}\r\e[11A
   STATS
   $stdout.flush
@@ -213,8 +214,8 @@ while total_waiting.positive?
   @ns_thrs = @ns_thrs.select(&:alive?)
   @wiki_thrs = @wiki_thrs.select(&:alive?)
 
-  # block until we need to do something
-  if total_running >= CPU_THREADS
+  # dont spawn threads if theres one per physical thread already running
+  if total_running >= MAX_THREADS
     sleep 1
     next
   end

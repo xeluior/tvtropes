@@ -9,3 +9,5 @@ group :development do
   gem "yard"
   gem "irb"
 end
+
+gem "concurrent-ruby", "~> 1.2"
