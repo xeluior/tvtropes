@@ -14,6 +14,8 @@ ROOT_URL = 'tvtropes.org'.freeze
 
 visited_pages = Set.new
 db = SQLite3::Database.open 'tvtropes.db'
+page_stmt = db.prepare 'insert into pages values ( ?, ?, ?, ?, ?, ? )'
+link_stmt = db.prepare 'insert into links values ( ?, ?, ?, ? )'
 def absolute(url_or_path)
   if url_or_path.start_with? PROTO
     url_or_path
@@ -147,11 +149,10 @@ sql_worker = lambda do
   while @sql_q.size.positive?
     data = @sql_q.pop
     links = data.delete(:links)
-    db.execute 'insert into pages values ( ?, ?, ?, ?, ?, ? )',
-               [data[:namespace], data[:id], data[:response], data[:title], data[:alias_of_namespace],
-                data[:alias_of_id]]
+    page_stmt.execute data[:namespace], data[:id], data[:response], data[:title], data[:alias_of_namespace],
+                      data[:alias_of_id]
     links&.each do |link|
-      db.execute 'insert into links values ( ?, ?, ?, ? )', [data[:namespace], data[:id], link[:namespace], link[:id]]
+    link_stmt.execute data[:namespace], data[:id], link[:namespace], link[:id]
     end
   end
 end
