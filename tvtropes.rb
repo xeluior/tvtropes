@@ -148,13 +148,15 @@ end
 
 sql_worker = lambda do
   while @sql_q.size.positive?
+    db.transaction
     data = @sql_q.pop
     links = data.delete(:links)
     page_stmt.execute data[:namespace], data[:id], data[:response], data[:title], data[:alias_of_namespace],
                       data[:alias_of_id]
     links&.each do |link|
-    link_stmt.execute data[:namespace], data[:id], link[:namespace], link[:id]
+      link_stmt.execute data[:namespace], data[:id], link[:namespace], link[:id]
     end
+    db.commit
   end
 end
 
@@ -227,3 +229,4 @@ while total_waiting.positive?
 end
 
 threads.each(&:join)
+db.close
