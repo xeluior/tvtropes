@@ -55,6 +55,9 @@ def get(url)
   end
 
   response
+rescue => e
+  puts "#{url} failed with #{e.message}"
+  retry
 end
 
 articlecount_worker = lambda do
