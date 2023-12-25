@@ -4,7 +4,8 @@ require 'sqlite3'
 require 'etc'
 
 CPU_THREADS = Etc.nprocessors
-ROOT_URL = 'https://tvtropes.org'.freeze
+PROTO = 'https://'.freeze
+ROOT_URL = 'tvtropes.org'.freeze
 
 @articlecount_q = Queue.new
 @namespace_q = Queue.new
@@ -13,6 +14,19 @@ ROOT_URL = 'https://tvtropes.org'.freeze
 
 visited_pages = Set.new
 db = SQLite3::Database.open 'tvtropes.db'
+def absolute(url_or_path)
+  if url_or_path.start_with? PROTO
+    url_or_path
+  elsif url_or_path.start_with? 'http://'
+    url_or_path.sub('http://', PROTO)
+  elsif url_or_path.start_with? ROOT_URL
+    "#{PROTO}url_or_path"
+  elsif url_or_path.start_with? '/'
+    "#{PROTO}#{ROOT_URL}#{url_or_path}"
+  else
+    "#{PROTO}#{ROOT_URL}/#{url_or_path}"
+  end
+end
 
 def escape(url)
   allowed = %r{[\w\d\[\].:-_~/?#@!$&'()*=+,;%]}
@@ -38,9 +52,6 @@ def get(url)
   end
 
   response
-rescue Errno::ECONNREFUSED | SocketError
-  puts url
-  Thread.current.kill
 end
 
 articlecount_worker = lambda do
@@ -51,7 +62,7 @@ articlecount_worker = lambda do
   namespace_list = wikimiddle.children[-2].children.select { |item| item.name == 'text' }
   namespace_list.each do |item|
     name = /\d+: (\w+)/.match(item.content)
-    index = escape("#{ROOT_URL}/pmwiki/namespace_index.php?ns=#{name[1]}") unless name.nil?
+    index = escape(absolute("/pmwiki/namespace_index.php?ns=#{name[1]}")) unless name.nil?
     @namespace_q.push(index) unless index.nil?
   end
 end
@@ -70,7 +81,7 @@ namespace_worker = lambda do
     end
   end
   html.css('.twikilink').each do |link|
-    @wiki_q.push escape("#{ROOT_URL}#{link['href']}")
+    @wiki_q.push escape(absolute(link['href']))
   end
 end
 
@@ -87,7 +98,7 @@ wiki_worker = lambda do
   # deal with redirects
   redirect_count = 0
   while response.is_a?(Net::HTTPFound) && redirect_count < 10
-    next_url = escape("#{ROOT_URL}#{response['Location']}")
+    next_url = escape(absolute(response['Location']))
     response = get(next_url)
     redirect_count += 1
   end
@@ -115,7 +126,7 @@ wiki_worker = lambda do
 
   # escape early if this is an alias, links will be read on the main page
   if redirect_count.positive?
-    @wiki_q.push escape(response.uri.to_s.sub(response.uri.query, ''))
+    @wiki_q.push escape(response.uri.to_s.sub(response.uri.query || '', ''))
     @sql_q.push data
     return
   end
@@ -123,9 +134,10 @@ wiki_worker = lambda do
   # parse links
   data[:links] = Set.new
   html.css('.twikilink').each do |link|
-    path = link['href'].split '/'
+    link_url = escape(absolute(link['href']))
+    path = link_url.path.split '/'
     data[:links].add?({ namespace: path[3], id: path[4] })
-    @wiki_q.push escape("#{ROOT_URL}#{link['href']}")
+    @wiki_q.push link_url
   end
 
   @sql_q.push data
@@ -147,7 +159,7 @@ end
 # seed the articlecount_q
 # 37 is the current number of articlecount.php pages
 37.times do |i|
-  @articlecount_q.push escape("#{ROOT_URL}/pmwiki/articlecount.php?page=#{i + 1}")
+  @articlecount_q.push escape(absolute("/pmwiki/articlecount.php?page=#{i + 1}"))
 end
 
 # schedule threads to run
