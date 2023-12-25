@@ -16,6 +16,7 @@ visited_pages = Set.new
 db = SQLite3::Database.open 'tvtropes.db'
 page_stmt = db.prepare 'insert into pages values ( ?, ?, ?, ?, ?, ? )'
 link_stmt = db.prepare 'insert into links values ( ?, ?, ?, ? )'
+
 def absolute(url_or_path)
   if url_or_path.start_with? PROTO
     url_or_path
@@ -193,11 +194,12 @@ while total_waiting.positive?
       Namespaces: #{@namespace_q.size.to_s.rjust 4}
       Pages: #{@wiki_q.size.to_s.rjust 9}
       SQL: #{@sql_q.size.to_s.rjust 11}
+      Visited: #{visited_pages.size.to_s.rjust 7}
     Threads (Max #{CPU_THREADS})
       Articlecount: #{@art_thrs.select(&:alive?).count.to_s.rjust 2}
       Namespaces:   #{@ns_thrs.select(&:alive?).count.to_s.rjust 2}
       Pages:        #{@wiki_thrs.select(&:alive?).count.to_s.rjust 2}
-      SQL:           #{@sql_thr.alive? ? '1' : '0'}\r\e[10A
+      SQL:           #{@sql_thr.alive? ? '1' : '0'}\r\e[11A
   STATS
   $stdout.flush
 
