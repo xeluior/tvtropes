@@ -5,14 +5,6 @@ require 'etc'
 require 'concurrent-ruby'
 require 'socket'
 
-# i didn't want to do this but I was left no choice
-class Addrinfo
-  old_getaddrinfo = method(:getaddrinfo)
-  define_singleton_method(:getaddrinfo) do |*args|
-    old_getaddrinfo.call(*args).reject(&:ipv6?)
-  end
-end
-
 MAX_THREADS = 2048
 PROTO = 'https://'.freeze
 ROOT_URL = 'tvtropes.org'.freeze
