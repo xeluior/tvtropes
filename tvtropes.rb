@@ -55,7 +55,7 @@ def get(url)
   end
 
   response
-rescue => e
+rescue StandardError => e
   puts "#{url} failed with #{e.message}"
   retry
 end
@@ -161,12 +161,44 @@ sql_worker = lambda do
     end
     db.commit
   end
+rescue StandardError => e
+  db.rollback if db.transaction_active?
+  puts "Failed transaction for #{data}. #{e.message} (#{e.class})"
+  if !data.key?(:links) && defined?(links)
+    data[:links] = links
+  end
+  @sql_q.push data
 end
 
-# seed the articlecount_q
+# seed the queues
+# current records
+print 'reading current records'
+$stdout.flush
+db.execute 'select namespace, id, alias_of_namespace, alias_of_id from pages' do |row|
+  path = if row[2].nil?
+           "/pmwiki/pmwiki.php/#{row[0]}/#{row[1]}"
+         else
+           "/pmwiki/pmwiki.php/#{row[2]}/#{row[3]}?from=#{row[0]}.#{row[1]}"
+         end
+  visited_pages.add escape(absolute(path))
+end
+
+# waiting records
+print "\rseeding search queue with broken links"
+$stdout.flush
+db.execute 'select distinct link_namespace, link_id from links where not exists (select * from pages where namespace = link_namespace and id = link_id)' do |row|
+  path = "/pmwiki/pmwiki.php/#{row[0]}/#{row[1]}"
+  @wiki_q.push escape(absolute(path))
+end
+
 # 37 is the current number of articlecount.php pages
-37.times do |i|
-  @articlecount_q.push escape(absolute("/pmwiki/articlecount.php?page=#{i + 1}"))
+if @wiki_q.empty?
+  print "\rno broken links
+ seeding queue with namespace listing"
+  $stdout.flush
+  37.times do |i|
+    @articlecount_q.push escape(absolute("/pmwiki/articlecount.php?page=#{i + 1}"))
+  end
 end
 
 # schedule threads to run
