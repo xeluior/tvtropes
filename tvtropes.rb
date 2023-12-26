@@ -3,8 +3,17 @@ require 'nokogiri'
 require 'sqlite3'
 require 'etc'
 require 'concurrent-ruby'
+require 'socket'
 
-MAX_THREADS = 512
+# i didn't want to do this but I was left no choice
+class Addrinfo
+  old_getaddrinfo = method(:getaddrinfo)
+  define_singleton_method(:getaddrinfo) do |*args|
+    old_getaddrinfo.call(*args).reject(&:ipv6?)
+  end
+end
+
+MAX_THREADS = 2048
 PROTO = 'https://'.freeze
 ROOT_URL = 'tvtropes.org'.freeze
 
@@ -56,7 +65,7 @@ def get(url)
 
   response
 rescue StandardError => e
-  puts "#{url} failed with #{e.message}"
+  puts "#{url} failed with #{e.message} (#{e.class})"
   retry
 end
 
