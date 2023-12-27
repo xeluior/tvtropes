@@ -177,7 +177,7 @@ end
 # current records
 print 'reading current records'
 $stdout.flush
-db.execute 'select namespace, id, alias_of_namespace, alias_of_id from pages where title is not null' do |row|
+db.execute 'select namespace, id, alias_of_namespace, alias_of_id from pages' do |row|
   path = if row[2].nil?
            "/pmwiki/pmwiki.php/#{row[0]}/#{row[1]}"
          else
@@ -189,7 +189,7 @@ end
 # waiting records
 print "\rseeding search queue with broken links"
 $stdout.flush
-db.execute 'select distinct link_namespace, link_id from links where not exists (select * from pages where namespace = link_namespace and id = link_id) union select namespace, id from pages where title is null' do |row|
+db.execute 'select distinct link_namespace, link_id from links where not exists (select * from pages where namespace = link_namespace and id = link_id)' do |row|
   path = "/pmwiki/pmwiki.php/#{row[0]}/#{row[1]}"
   @wiki_q.push escape(absolute(path))
 end
