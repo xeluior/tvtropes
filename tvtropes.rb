@@ -50,7 +50,7 @@ def get(url)
   response = Net::HTTP.get_response(url)
   while response.is_a? Net::HTTPForbidden
     # we are being rate limited
-    sleep_timer = Random.rand(0..600)
+    sleep_timer = 30
     sleep sleep_timer
     response = Net::HTTP.get_response(url)
   end
@@ -127,8 +127,10 @@ wiki_worker = lambda do
   data[:title] = if redirect_count.positive? && !(aka_title = html.at_css('.aka-title')).nil?
                    aka_title.content.strip.sub('aka: ', '')
                  else
-                   header = html.at_css('.entry-title')&.children&.select { |c| c.name == 'text' }
-                   header[1]&.content&.strip unless header.nil?
+                   header = html.at_css('.entry-title')&.children&.select do |e|
+                     e.name == 'text' && /\S/.match?(e.content)
+                   end
+                   header.first.content.strip
                  end
 
   # escape early if this is an alias, links will be read on the main page
@@ -175,7 +177,7 @@ end
 # current records
 print 'reading current records'
 $stdout.flush
-db.execute 'select namespace, id, alias_of_namespace, alias_of_id from pages' do |row|
+db.execute 'select namespace, id, alias_of_namespace, alias_of_id from pages where title is not null' do |row|
   path = if row[2].nil?
            "/pmwiki/pmwiki.php/#{row[0]}/#{row[1]}"
          else
@@ -187,7 +189,7 @@ end
 # waiting records
 print "\rseeding search queue with broken links"
 $stdout.flush
-db.execute 'select distinct link_namespace, link_id from links where not exists (select * from pages where namespace = link_namespace and id = link_id)' do |row|
+db.execute 'select distinct link_namespace, link_id from links where not exists (select * from pages where namespace = link_namespace and id = link_id) union select namespace, id from pages where title is null' do |row|
   path = "/pmwiki/pmwiki.php/#{row[0]}/#{row[1]}"
   @wiki_q.push escape(absolute(path))
 end
