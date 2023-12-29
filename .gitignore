@@ -3,3 +3,4 @@
 *.db
 /.bundle
 *.db-journal
+/.yardoc
