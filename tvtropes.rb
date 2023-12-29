@@ -5,7 +5,7 @@ require 'etc'
 require 'concurrent-ruby'
 require 'socket'
 
-MAX_THREADS = 2048
+MAX_THREADS = 1024
 PROTO = 'https://'.freeze
 ROOT_URL = 'tvtropes.org'.freeze
 
@@ -13,6 +13,7 @@ ROOT_URL = 'tvtropes.org'.freeze
 @namespace_q = Queue.new
 @wiki_q = Queue.new
 @sql_q = Queue.new
+@error_log = Concurrent::Array.new
 
 visited_pages = Concurrent::Set.new
 db = SQLite3::Database.open 'tvtropes.db'
@@ -20,6 +21,7 @@ page_stmt = db.prepare 'insert into pages values ( ?, ?, ?, ?, ?, ? )'
 link_stmt = db.prepare 'insert into links values ( ?, ?, ?, ? )'
 
 def absolute(url_or_path)
+  url_or_path = url_or_path.downcase :ascii
   if url_or_path.start_with? PROTO
     url_or_path
   elsif url_or_path.start_with? 'http://'
@@ -57,12 +59,11 @@ def get(url)
 
   response
 rescue StandardError => e
-  puts "#{url} failed with #{e.message} (#{e.class})"
+  @error_log.push "#{url} failed with #{e.message} (#{e.class})"
   retry
 end
 
-articlecount_worker = lambda do
-  url = @articlecount_q.pop
+def articlecount_worker(url)
   content = get(url)
   html = Nokogiri::HTML5.parse(content.body)
   wikimiddle = html.at_css('#wikimiddle')
@@ -72,10 +73,11 @@ articlecount_worker = lambda do
     index = escape(absolute("/pmwiki/namespace_index.php?ns=#{name[1]}")) unless name.nil?
     @namespace_q.push(index) unless index.nil?
   end
+rescue => e
+  @error_log.push "#{e.class} for #{url}. #{e.message}"
 end
 
-namespace_worker = lambda do
-  url = @namespace_q.pop
+def namespace_worker(url)
   content = get(url)
   html = Nokogiri::HTML5.parse(content.body)
   unless url.query.include? 'page'
@@ -92,15 +94,12 @@ namespace_worker = lambda do
   end
 end
 
-wiki_worker = lambda do
-  # get url and check if it's been visited
-  url = @wiki_q.pop
-  return unless visited_pages.add? url
-
+def wiki_worker(url)
   # get initial metadata
   path = url.path.split '/'
   response = get(url)
   data = { namespace: path[3], id: path[4], response: response.code.to_i }
+  @error_log.push "#{url} has no identifier" if data[:id].nil?
 
   # deal with redirects
   redirect_count = 0
@@ -122,23 +121,19 @@ wiki_worker = lambda do
     return
   end
 
-  # parse title
-  html = Nokogiri.parse(response.body)
-  data[:title] = if redirect_count.positive? && !(aka_title = html.at_css('.aka-title')).nil?
-                   aka_title.content.strip.sub('aka: ', '')
-                 else
-                   header = html.at_css('.entry-title')&.children&.select do |e|
-                     e.name == 'text' && /\S/.match?(e.content)
-                   end
-                   header.first.content.strip
-                 end
-
   # escape early if this is an alias, links will be read on the main page
   if redirect_count.positive?
     @wiki_q.push escape(response.uri.to_s.sub(response.uri.query || '', ''))
     @sql_q.push data
     return
   end
+
+  # parse title
+  html = Nokogiri.parse(response.body)
+  header = html.at_css('.entry-title')&.children&.select do |e|
+    e.name == 'text' && /\S/.match?(e.content)
+  end
+  data[:title] = header&.first&.content&.strip
 
   # parse links
   data[:links] = Set.new
@@ -154,8 +149,9 @@ end
 
 sql_worker = lambda do
   while @sql_q.size.positive?
-    db.transaction
     data = @sql_q.pop
+
+    db.transaction
     links = data.delete(:links)
     page_stmt.execute data[:namespace], data[:id], data[:response], data[:title], data[:alias_of_namespace],
                       data[:alias_of_id]
@@ -166,17 +162,46 @@ sql_worker = lambda do
   end
 rescue StandardError => e
   db.rollback if db.transaction_active?
-  puts "Failed transaction for #{data}. #{e.message} (#{e.class})"
+  @error_log.push "Failed transaction for #{data}. #{e.message} (#{e.class})"
   if !data.key?(:links) && defined?(links)
     data[:links] = links
   end
   @sql_q.push data
 end
 
+# schedule threads to run
+@sql_thr = Thread.new { nil }
+@art_thrs = []
+@ns_thrs = []
+@wiki_thrs = []
+
+Thread.new do
+  loop do
+    errors = @error_log.last(5).map { |e| e&.split("\n")&.first&.chars&.first(`tput cols`.to_i)&.join('') }
+    error_lines = errors.count - 1
+    output_lines = 12 + error_lines
+    print <<~STATS
+      \rQueues
+        Articlecount: #{@articlecount_q.size.to_s.rjust 2}
+        Namespaces: #{@namespace_q.size.to_s.rjust 4}
+        Pages: #{@wiki_q.size.to_s.rjust 9}
+        SQL: #{@sql_q.size.to_s.rjust 11}
+        Visited: #{visited_pages.size.to_s.rjust 7}
+      Threads
+        Articlecount: #{@art_thrs.select(&:alive?).count.to_s.rjust 2}
+        Namespaces: #{@ns_thrs.select(&:alive?).count.to_s.rjust 4}
+        Pages: #{@wiki_thrs.select(&:alive?).count.to_s.rjust 9}
+        SQL:           #{@sql_thr.alive? ? '1' : '0'}
+      #{errors.join("\n")}\e[#{output_lines}A
+    STATS
+    $stdout.flush
+    sleep 0.1
+  end
+end
+
 # seed the queues
 # current records
-print 'reading current records'
-$stdout.flush
+@error_log.push 'reading current records'
 db.execute 'select namespace, id, alias_of_namespace, alias_of_id from pages' do |row|
   path = if row[2].nil?
            "/pmwiki/pmwiki.php/#{row[0]}/#{row[1]}"
@@ -187,28 +212,17 @@ db.execute 'select namespace, id, alias_of_namespace, alias_of_id from pages' do
 end
 
 # waiting records
-print "\rseeding search queue with broken links"
-$stdout.flush
+@error_log.push 'seeding search queue with broken links'
 db.execute 'select distinct link_namespace, link_id from links where not exists (select * from pages where namespace = link_namespace and id = link_id)' do |row|
   path = "/pmwiki/pmwiki.php/#{row[0]}/#{row[1]}"
   @wiki_q.push escape(absolute(path))
 end
 
 # 37 is the current number of articlecount.php pages
-if @wiki_q.empty?
-  print "\rno broken links
- seeding queue with namespace listing"
-  $stdout.flush
-  37.times do |i|
-    @articlecount_q.push escape(absolute("/pmwiki/articlecount.php?page=#{i + 1}"))
-  end
+@error_log.push 'seeding queue with namespace listing'
+37.times do |i|
+  @articlecount_q.push escape(absolute("/pmwiki/articlecount.php?page=#{i + 1}"))
 end
-
-# schedule threads to run
-@sql_thr = Thread.new { nil }
-@art_thrs = []
-@ns_thrs = []
-@wiki_thrs = []
 
 # run until nothing is left waiting
 def total_waiting
@@ -219,52 +233,34 @@ def threads
   [@sql_thr, *@art_thrs, *@ns_thrs, *@wiki_thrs]
 end
 
-def total_running
-  threads.select(&:alive?).count
-end
+begin
+  while total_waiting.positive? || threads.count.positive?
+    # cleanup dead threads
+    @art_thrs = @art_thrs.select(&:alive?)
+    @ns_thrs = @ns_thrs.select(&:alive?)
+    @wiki_thrs = @wiki_thrs.select(&:alive?)
 
-def awake
-  threads.reject { |thr| thr.status == 'sleep' }
-end
+    # block while we are at the max thread count
+    next if threads.count >= MAX_THREADS
 
-while total_waiting.positive? || total_running.positive?
-  print <<~STATS
-    Queues
-      Articlecount: #{@articlecount_q.size.to_s.rjust 2}
-      Namespaces: #{@namespace_q.size.to_s.rjust 4}
-      Pages: #{@wiki_q.size.to_s.rjust 9}
-      SQL: #{@sql_q.size.to_s.rjust 11}
-      Visited: #{visited_pages.size.to_s.rjust 7}
-    Threads
-      Articlecount: #{@art_thrs.select(&:alive?).count.to_s.rjust 2}
-      Namespaces: #{@ns_thrs.select(&:alive?).count.to_s.rjust 4}
-      Pages: #{@wiki_thrs.select(&:alive?).count.to_s.rjust 9}
-      SQL:           #{@sql_thr.alive? ? '1' : '0'}\r\e[11A
-  STATS
-  $stdout.flush
+    # schedule a thread
+    if @sql_q.size.positive? && !@sql_thr.alive?
+      @sql_thr = Thread.new(&sql_worker)
+    elsif @articlecount_q.size.positive?
+      @art_thrs << Thread.new(@articlecount_q.pop) { |url| articlecount_worker url }
+    elsif @namespace_q.size.positive?
+      @ns_thrs << Thread.new(@namespace_q.pop) { |url| namespace_worker url }
+    elsif @wiki_q.size.positive?
+      url = @wiki_q.pop
+      next if visited_pages.add?(url).nil?
 
-  # cleanup dead threads
-  @art_thrs = @art_thrs.select(&:alive?)
-  @ns_thrs = @ns_thrs.select(&:alive?)
-  @wiki_thrs = @wiki_thrs.select(&:alive?)
-
-  # dont spawn threads if theres one per physical thread already running
-  if total_running >= MAX_THREADS
-    sleep 1
-    next
+      @wiki_thrs << Thread.new(url) { |url| wiki_worker url }
+    end
   end
-
-  # schedule a thread
-  if @sql_q.size.positive? && !@sql_thr.alive?
-    @sql_thr = Thread.new(&sql_worker)
-  elsif @namespace_q.size < 100 * @articlecount_q.size
-    @art_thrs << Thread.new(&articlecount_worker)
-  elsif @wiki_q.size < 10 * @namespace_q.size
-    @ns_thrs << Thread.new(&namespace_worker)
-  else
-    @wiki_thrs << Thread.new(&wiki_worker)
+rescue Interrupt
+  File.open 'error.log', 'w' do |fd|
+    fd.puts @error_log
   end
 end
 
-threads.each(&:join)
 db.close
