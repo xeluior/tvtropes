@@ -1,9 +1,7 @@
 require 'net/http'
 require 'nokogiri'
 require 'sqlite3'
-require 'etc'
 require 'concurrent-ruby'
-require 'socket'
 
 MAX_THREADS = 1024
 PROTO = 'https://'.freeze

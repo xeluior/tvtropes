@@ -10,3 +10,5 @@ group :development do
   gem "irb"
   gem "pry"
 end
+
+gem "net-http", "~> 0.4.0"
