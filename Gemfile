@@ -2,12 +2,11 @@ source "https://rubygems.org"
 
 gem "nokogiri"
 gem "sqlite3"
-gem "open-uri"
+gem "concurrent-ruby", "~> 1.2"
 
 group :development do
   gem "solargraph"
   gem "yard"
   gem "irb"
+  gem "pry"
 end
-
-gem "concurrent-ruby", "~> 1.2"
