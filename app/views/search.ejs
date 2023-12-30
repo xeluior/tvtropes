@@ -1,0 +1,29 @@
+<% include('layouts/header') %>
+<div id="filters">
+  <div id="namespaces">
+    <input form="filter-form" name="nsq" type="text" placeholder="namespace" /><br />
+    <% namespaces.forEach(namespace => { %>
+      <input form="filter-form" name="n" type="checkbox" value="<%= namespace.namespace %>" <% if (namespace.selected) { %>checked<% } %>><%= namespace.namespace %> (<%= namespace.articles %>)</input><br />
+    <% }) %>
+  </div>
+  <hr />
+  <div id="tropes">
+    <input form="filter-form" name="tsq" type="text" placeholder="trope" /><br />
+    <% tropes.forEach(trope => { %>
+      <input form="filter-form" name="t" type="checkbox" value="<%= trope.id %>" <% if (trope.selected) { %>checked<% } %>><%= trope.title %> (<%= trope.occurances %>)</input><br />
+    <% }) %>
+  </div>
+  <form id="filter-form" action="/search" method="get">
+    <input type="submit" />
+  </form>
+</div>
+<div id="main">
+  <% results.forEach(page => { %>
+    <p>
+      <a href="https://tvtropes.org/pmwiki/pmwiki.php/<%= page.namespace %>/<%= page.id %>">
+        <%= page.namespace %> / <%= page.title %>
+      </a>
+    </p>
+  <% }) %>
+</div>
+<% include('layouts/footer') %>
