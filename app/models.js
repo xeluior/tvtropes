@@ -27,10 +27,10 @@ const TVTropes = {
 
   /**
    * @typedef {Object} Trope
-   * @typedef {String} namespace
-   * @typedef {String} id
-   * @typedef {String} title
-   * @typedef {Number} occurances
+   * @property {String} namespace
+   * @property {String} id
+   * @property {String} title
+   * @property {Number} occurances
    */
 
   PAGE_SIZE: 10,
