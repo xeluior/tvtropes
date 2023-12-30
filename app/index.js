@@ -9,6 +9,11 @@ app.set('view engine', 'ejs')
 app.set('views', __dirname + '/views')
 
 app.use('/', routes)
+app.use((err, req, res, _) => {
+  const path = req.path + '?' + Object.entries(req.query).map(([key, value]) => `${key}=${value}`).join('&')
+  console.log(`${Date()} to ${path} from ${req.ip} caused ${err.name}: ${err.message}`)
+  res.sendStatus(500)
+})
 
 app.listen(port, addr, () => {
   console.log(`Server listening at ${addr}:${port}`)
