@@ -2,7 +2,6 @@ const { TVTropes } = require('../models.js')
 
 module.exports.show = async function(req, res, next) {
   try {
-    if (req.query.err) throw new Error(req.query.err)
     // parse parameters
     const namespaceSearchQuery = req.query.nsq || ''
     const tropeSearchQuery = req.query.tsq || ''
