@@ -1,23 +1,51 @@
-<% include('layouts/header') %>
-<div id="filters">
+<%- include('layouts/header.ejs') %>
+<div class='container'>
+<div class='row'>
+<search class='col-lg-3'>
   <div id="namespaces">
-    <input form="filter-form" name="nsq" type="text" placeholder="namespace" /><br />
+    <input form="filter-form" name="nsq" type="text" placeholder="namespace" class='form-control' />
     <% namespaces.forEach(namespace => { %>
-      <input form="filter-form" name="n" type="checkbox" value="<%= namespace.namespace %>" <% if (namespace.selected) { %>checked<% } %>><%= namespace.namespace %> (<%= namespace.articles %>)</input><br />
+      <div class='form-check'>
+        <input
+          form="filter-form"
+          name="n"
+          type="checkbox"
+          class='form-check-input'
+          id="<%= namespace.namespace %>"
+          value="<%= namespace.namespace %>"
+          <% if (namespace.selected) { %>
+            checked
+          <% } %>
+        />
+        <label for="<%= namespace.namespace %>"><%= namespace.namespace %> (<%= namespace.articles %>)</label>
+      </div>
     <% }) %>
   </div>
   <hr />
   <div id="tropes">
-    <input form="filter-form" name="tsq" type="text" placeholder="trope" /><br />
+    <input form="filter-form" name="tsq" type="text" placeholder="trope" class='form-control' />
     <% tropes.forEach(trope => { %>
-      <input form="filter-form" name="t" type="checkbox" value="<%= trope.id %>" <% if (trope.selected) { %>checked<% } %>><%= trope.title %> (<%= trope.occurances %>)</input><br />
+      <div clas='form-check'>
+        <input
+          form="filter-form"
+          name="t"
+          type="checkbox"
+          class='form-check-input'
+          value="<%= trope.id %>"
+          id="<%= trope.id %>"
+          <% if (trope.selected) { %>
+            checked
+          <% } %>
+        />
+        <label for="<%= trope.id %>"><%= trope.title %> (<%= trope.occurances %>)</label>
+      </div>
     <% }) %>
   </div>
   <form id="filter-form" action="/search" method="get">
-    <input type="submit" />
+    <input type="submit" class='btn btn-primary' />
   </form>
-</div>
-<div id="main">
+</search>
+<main class='col-lg-9'>
   <% results.forEach(page => { %>
     <p>
       <a href="https://tvtropes.org/pmwiki/pmwiki.php/<%= page.namespace %>/<%= page.id %>">
@@ -25,5 +53,22 @@
       </a>
     </p>
   <% }) %>
+  <nav aria-label="Search result pages">
+    <ul class='pagination'>
+      <li class='page-item<%= pages[0].current ? ' disabled': '' %>'>
+        <a class='page-link' href='<%= pages[0].href %>' aria-label="previous">&lt;</a>
+      </li>
+      <% pages.forEach(page => { %>
+        <li class='page-item<%= page.current ? ' active' : '' %>'>
+          <a class='page-link' href="<%= page.href %>"><%= page.number %></a>
+        </li>
+      <% }) %>
+      <li class='page-item<%= pages[pages.length - 1].current ? ' disabled': '' %>'>
+        <a class='page-link' href='<%= pages[pages.length - 1].href %>' aria-label="next">&gt;</a>
+      </li>
+    </ul>
+  </nav>
+</main>
 </div>
-<% include('layouts/footer') %>
+</div>
+<%- include('layouts/footer.ejs') %>

@@ -5,7 +5,7 @@ module.exports.show = async function(req, res, next) {
     // parse parameters
     const namespaceSearchQuery = req.query.nsq || ''
     const tropeSearchQuery = req.query.tsq || ''
-    const page = req.query.page || 1
+    const page = Number.parseInt(req.query.page) || 1
 
     // normalize to arrays
     const namespaces = req.query.n === undefined ? [] : [].concat(req.query.n)
@@ -28,13 +28,20 @@ module.exports.show = async function(req, res, next) {
 
     // add data for which namespaces where queried
     for (const [i, item] of namespaceFilters.entries()) {
-      namespaceFilters[i].selected = namespaces.includes(item.namespace)
+      namespaceFilters[i].selected = namespaces.find(namespace => item.namespace.toLowerCase() === namespace.toLowerCase()) !== undefined
     }
     for (const [i, item] of tropeFilters.entries()) {
-      tropeFilters[i].selected = tropes.includes(item.id)
+      tropeFilters[i].selected = tropes.find(trope => item.id.toLowerCase() === trope.toLowerCase()) !== undefined
     }
 
-    res.render('search', { namespaces: namespaceFilters, results, tropes: tropeFilters })
+    // generate page links
+    const path = '/search?' + `tsq=${tropeSearchQuery}` + `&nsq=${namespaceSearchQuery}` + `&n=${namespaces.join('&n=')}` + `&t=${tropes.join('&t=')}`
+    const pageNumbers = page === 1 ? [1, 2, 3] : [page - 1, page, page + 1]
+    const pages = pageNumbers.map(i => {
+      return { href: `${path}&page=${i}`, number: i, current: i === page }
+    })
+
+    res.render('search', { namespaces: namespaceFilters, results, tropes: tropeFilters, pages })
   } catch (e) {
     next(e)
   }
