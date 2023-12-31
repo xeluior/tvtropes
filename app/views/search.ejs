@@ -3,12 +3,15 @@
 <div class='row'>
 <search class='col-lg-3'>
   <div id="namespaces">
-    <input form="filter-form" name="nsq" type="text" placeholder="namespace" class='form-control' />
+    <div class='input-group'>
+      <input form="search" name="nsq" type="text" placeholder="namespace" class='form-control' />
+      <button form="search" class="btn btn-secondary"><i class="bi bi-search"></i></button>
+    </div>
     <fieldset>
       <% namespaces.forEach(namespace => { %>
         <div class='form-check'>
           <input
-            form="filter-form"
+            form="search"
             name="n"
             type="checkbox"
             class='form-check-input'
@@ -23,14 +26,16 @@
       <% }) %>
     </fieldset>
   </div>
-  <hr />
   <div id="tropes">
-    <input form="filter-form" name="tsq" type="text" placeholder="trope" class='form-control' />
+    <div class='input-group'>
+      <input form="search" name="tsq" type="text" placeholder="trope" class='form-control' />
+      <button form="search" class="btn btn-secondary"><i class="bi bi-search"></i></button>
+    </div>
     <fieldset>
       <% tropes.forEach(trope => { %>
         <div clas='form-check'>
           <input
-            form="filter-form"
+            form="search"
             name="t"
             type="checkbox"
             class='form-check-input'
@@ -45,18 +50,20 @@
       <% }) %>
     </fieldset>
   </div>
-  <form id="filter-form" action="/search" method="get">
+  <form id="search" action="/search" method="get" class='d-grid'>
     <input type="submit" class='btn btn-primary' />
   </form>
 </search>
 <main class='col-lg-9'>
-  <% results.forEach(page => { %>
-    <p>
-      <a href="https://tvtropes.org/pmwiki/pmwiki.php/<%= page.namespace %>/<%= page.id %>">
-        <%= page.namespace %> / <%= page.title %>
-      </a>
-    </p>
-  <% }) %>
+  <ul>
+    <% results.forEach(page => { %>
+      <li>
+        <a href="https://tvtropes.org/pmwiki/pmwiki.php/<%= page.namespace %>/<%= page.id %>">
+          <%= page.namespace %> / <%= page.title %>
+        </a>
+      </li>
+    <% }) %>
+  </ul>
   <nav aria-label="Search result pages">
     <ul class='pagination'>
       <li class='page-item<%= pages.first.current ? ' disabled': '' %>'>
