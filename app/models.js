@@ -32,7 +32,9 @@ const TVTropes = {
    * @property {Number} occurances
    */
 
-  PAGE_SIZE: 10,
+  RESULTS_PAGE_SIZE: 20,
+  TROPES_PAGE_SIZE: 12,
+  NAMESPACES_PAGE_SIZE: 10,
   articleCountQueryStmt: db.prepare('SELECT namespace, COUNT(id) AS articles FROM pages WHERE namespace LIKE ? GROUP BY namespace ORDER BY COUNT(id) DESC LIMIT ? OFFSET ?'),
 
   /**
@@ -40,9 +42,9 @@ const TVTropes = {
    * @param {Number} page
    * @returns {Array<Number>}
    */
-  pageParams: function(page) {
-    const offset = this.PAGE_SIZE * (page - 1)
-    return [this.PAGE_SIZE, offset]
+  pageParams: function(page, pageSize = this.RESULTS_PAGE_SIZE) {
+    const offset = pageSize * (page - 1)
+    return [pageSize, offset]
   },
 
   /**
@@ -54,7 +56,7 @@ const TVTropes = {
    */
   articleCount: function(query = '', page = 1) {
     return new Promise((resolve, reject) => {
-      this.articleCountQueryStmt.all(query, ...this.pageParams(page), (err, data) => {
+      this.articleCountQueryStmt.all(query, ...this.pageParams(page, this.NAMESPACES_PAGE_SIZE), (err, data) => {
         if (err) reject(err)
         resolve(data)
       })
@@ -194,7 +196,7 @@ const TVTropes = {
     * @returns {Promise<Array<Page>>}
     */
   search: function(namespaces, tropes, page = 1) {
-    const subquery = this.resultsQuery(namespaces, tropes, page)
+    const subquery = this.resultsQuery(namespaces, tropes)
     const query = `SELECT
         results.namespace, results.id, pages.title
       FROM (${subquery.statement} ORDER BY COUNT(*) DESC LIMIT ? OFFSET ?) AS results
@@ -206,6 +208,23 @@ const TVTropes = {
       db.all(query, ...subquery.parameters, ...this.pageParams(page), (err, data) => {
         if (err) reject(err)
         resolve(data)
+      })
+    })
+  },
+
+  /**
+   * The total number of results that will be returned for the given filters
+   * @param {Array<String>} [namespaces]
+   * @param {Array<String>} [tropes]
+   * @returns {Promise<Number>}
+   */
+  resultCount: function(namespaces, tropes) {
+    const subquery = this.resultsQuery(namespaces, tropes)
+    const query = `SELECT COUNT(*) AS results FROM (${subquery.statement})`
+    return new Promise((resolve, reject) => {
+      db.get(query, ...subquery.parameters, (err, data) => {
+        if (err) reject(err)
+        resolve(Number.parseInt(data.results))
       })
     })
   },
@@ -250,7 +269,7 @@ const TVTropes = {
         ...subquery.parameters,
         query,
         ...tropes,
-        ...this.pageParams(page),
+        ...this.pageParams(page, this.TROPES_PAGE_SIZE),
         (err, data) => {
           if (err) reject(err)
           resolve(data)

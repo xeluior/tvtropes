@@ -11,6 +11,7 @@ app.use('/', routes)
 app.use((err, req, res, _) => {
   const path = req.path + '?' + Object.entries(req.query).map(([key, value]) => `${key}=${value}`).join('&')
   console.log(`${Date()} to ${path} from ${req.ip} caused ${err.name}: ${err.message}`)
+  console.log(err.stack)
   res.sendStatus(500)
 })
 
