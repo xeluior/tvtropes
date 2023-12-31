@@ -55,6 +55,13 @@ module.exports.show = async function(req, res, next) {
   }
 } 
 
+/**
+ * Creates an array of integers representing page numbers surrounding current while keeping the range within 1..max
+ * @param {Number} current
+ * @param {Number} max
+ * @param {Number} size
+ * @returns {Array<Number>}
+ */
 const generatePageWindow = (current, max, size) => {
   size = Math.min(size, max)
 

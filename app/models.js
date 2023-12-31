@@ -238,23 +238,39 @@ const TVTropes = {
    * @returns {Promise<Array<Trope>>}
    */
   associatedTropes: function(namespaces, tropes, query, page = 1) {
-    const subquery = this.resultsQuery(namespaces, tropes, page)
-    const conditionsArray = Array(tropes.length).fill('links.link_id = ?') // bind to ...tropes
-    conditionsArray.unshift('links.link_id LIKE ?')  // bind to query
+    const subquery = (() => {
+      if (namespaces.length === 0 && tropes.length === 0) {
+        return {
+          statement: `SELECT
+              links.link_namespace AS namespace, links.link_id AS id, COUNT(*) AS occurances
+            FROM links WHERE links.link_namespace = 'Main'`,
+          parameters: []
+        }
+      }
+      const innerSubquery = this.resultsQuery(namespaces, tropes)
+      return {
+        statement: `SELECT
+            links.link_namespace AS namespace, links.link_id AS id, COUNT(*) AS occurances
+          FROM links
+          JOIN (${innerSubquery.statement}) AS results
+          ON
+            links.namespace = results.namespace
+            AND links.id = results.id
+          WHERE links.link_namespace = 'Main'`,
+        parameters: innerSubquery.parameters
+      }
+    })()
 
+    // including tropes in the search condition ensures we don't have to unshift the result with already selected filters
+    const conditionsArray = Array(tropes.length).fill('links.link_id = ?')
+    conditionsArray.unshift('links.link_id LIKE ?')
     const conditions = conditionsArray.join(' OR ')
+
     const sql = `SELECT
         tropes.namespace, tropes.id, pages.title, tropes.occurances
       FROM (
-        SELECT
-          links.link_namespace AS namespace, links.link_id AS id, COUNT(*) as occurances
-        FROM links
-        JOIN (${subquery.statement}) AS results /* binds to subquery.parameters */
-        ON
-          links.namespace = results.namespace
-          AND links.id = results.id
-        WHERE links.link_namespace = 'Main'
-        AND ( ${conditions} )
+        ${subquery.statement}
+        AND ( ${conditions} )  /* binds to query and tropes */
         GROUP BY links.link_namespace, links.link_id
         ORDER BY COUNT(*) DESC
         LIMIT ? OFFSET ?       /* binds to this.pageParams */
