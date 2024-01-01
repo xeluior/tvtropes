@@ -1,8 +1,9 @@
 const sqlite3 = require('sqlite3')
-const db = new sqlite3.Database('tvtropes.db', sqlite3.OPEN_READONLY)
+const db = new sqlite3.Database('tvtropes.db')
 if ((process.env.NODE_ENV || 'development') === 'development') {
   db.on('trace', console.log)
 }
+db.exec('ANALYZE links')
 
 /**
  * @namespace TVTropes
