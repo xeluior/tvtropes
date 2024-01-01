@@ -3,7 +3,8 @@ const db = new sqlite3.Database('tvtropes.db')
 if ((process.env.NODE_ENV || 'development') === 'development') {
   db.on('trace', console.log)
 }
-db.exec('ANALYZE links')
+db.exec('PRAGMA analysis_limit = 0')
+db.exec('PRAGMA optimize')
 
 /**
  * @namespace TVTropes
