@@ -16,6 +16,7 @@ module.exports.show = async function(req, res, next) {
     const resultsQuery  = TVTropes.search(namespaces, tropes, page)
     const resultCountQuery  = TVTropes.resultCount(namespaces, tropes)
     const tropeFiltersQuery  = TVTropes.associatedTropes(namespaces, tropes, `%${tropeSearchQuery}%`)
+    const [namespaceFilters, results, resultCount, tropeFilters] = await Promise.all([namespaceFiltersQuery, resultsQuery, resultCountQuery, tropeFiltersQuery])
 
     // include all selected namespace filters
     const queryNamespaces = await Promise.all(namespaces.filter(name =>
