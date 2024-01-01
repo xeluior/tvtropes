@@ -41,6 +41,8 @@ module.exports = {
       throw new Error(`${response.status} ${response.statusText}`)
     }).then((body) => {
       document.getElementById('trope-filters').innerHTML = body
+
+      // add the event handlers to the new html
       document.querySelectorAll('[name="t"]').forEach(e => {
         e.addEventListener('change', function() {
           document.getElementById('tropes').requestSubmit()
@@ -82,6 +84,13 @@ module.exports = {
       throw new Error(`${response.status} ${response.statusText}`)
     }).then(body => {
       document.getElementById('namespace-filters').innerHTML = body
+
+      // add the event addEventListener to the new html
+      document.querySelectorAll('[name="n"]').forEach(e => {
+        e.addEventListener('change', function() {
+          document.getElementById('tropes').requestSubmit()
+        })
+      })
     }).catch((err) => {
       causeAlert(err.message)
 
@@ -107,11 +116,11 @@ module.exports = {
       }
 
       // event was fired by form submit
-      return Array.from(new FormData(document.getElementById('search'))).map(f => f.join('=')).join('&')
+      return '?' + Array.from(new FormData(document.getElementById('search'))).map(f => f.join('=')).join('&')
     })()
 
     // update the browser history
-    history.pushState({}, '', `/search?${params}`)
+    history.pushState({}, '', `/search${params}`)
 
     // set the placeholders
     for (const e of document.querySelectorAll('.twikilink')) {
@@ -122,7 +131,7 @@ module.exports = {
     }
 
     // submit the form
-    fetch(`/results?${params}`).then((response) => {
+    fetch(`/results${params}`).then((response) => {
       if (response.ok) {
         return response.text()
       }
@@ -130,6 +139,11 @@ module.exports = {
       throw new Error(`${response.status} ${response.statusText}`)
     }).then((body) => {
       document.getElementById('results').innerHTML = body
+
+      // reregister click event handler on page links
+      document.querySelectorAll('.page-link').forEach(e => {
+        e.addEventListener('click', module.exports.search)
+      })
     }).catch((err) => {
       causeAlert(err.message)
 

@@ -25,9 +25,11 @@ window.onload = function() {
   namespacesForm.addEventListener('submit', forms.namespaces)
   namespaceDiv.replaceWith(namespacesForm)
 
-  // override search form behaviour
-  const search = document.getElementById('search')
-  search.addEventListener('submit', forms.search)
+  // override search form and pagination behaviour
+  document.getElementById('search').addEventListener('submit', forms.search)
+  for(const element of document.getElementsByClassName('page-link')) {
+    element.addEventListener('click', forms.search)
+  }
 
   // reload trope filters if namespaces are change
   document.querySelectorAll('[name="n"], [name="t"]').forEach(e => {
