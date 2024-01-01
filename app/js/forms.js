@@ -32,7 +32,7 @@ module.exports = {
 
     // submit the form
     const tropeSearchQuery = document.getElementById('tsq').value
-    const params = Array.from(document.querySelectorAll('[name="t"], [name="n]'))
+    const params = Array.from(document.querySelectorAll('[name="t"], [name="n"]'))
       .filter(e => e.checked).map(e => `${e.name}=${e.value}`).join('&')
     fetch(`/tropes?${params}&tsq=${tropeSearchQuery}`).then((response) => {
       if (response.ok) {
@@ -41,6 +41,11 @@ module.exports = {
       throw new Error(`${response.status} ${response.statusText}`)
     }).then((body) => {
       document.getElementById('trope-filters').innerHTML = body
+      document.querySelectorAll('[name="t"]').forEach(e => {
+        e.addEventListener('change', function() {
+          document.getElementById('tropes').requestSubmit()
+        })
+      })
     }).catch((err) => {
       causeAlert(err.message)
 
@@ -100,9 +105,9 @@ module.exports = {
         const url = new URL(event.target.href)
         return url.search
       }
-      
+
       // event was fired by form submit
-      Array.from(FormData(document.getElementById('search'))).map(f => f.join('=')).join('&')
+      return Array.from(new FormData(document.getElementById('search'))).map(f => f.join('=')).join('&')
     })()
 
     // update the browser history

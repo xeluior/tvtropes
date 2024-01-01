@@ -30,7 +30,7 @@ window.onload = function() {
   search.addEventListener('submit', forms.search)
 
   // reload trope filters if namespaces are change
-  document.querySelectorAll('[name="n"]').forEach(e => {
+  document.querySelectorAll('[name="n"], [name="t"]').forEach(e => {
     e.addEventListener('change', function() {
       document.getElementById('tropes').requestSubmit()
     })
