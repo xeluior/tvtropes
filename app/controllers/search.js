@@ -12,11 +12,10 @@ module.exports.show = async function(req, res, next) {
     const tropes = (req.query.t || '') === '' ? [] : [].concat(req.query.t)
 
     // perform queries
-    const namespacesQuery = TVTropes.articleCount(`%${namespaceSearchQuery}%`)
-    const resultsQuery = TVTropes.search(namespaces, tropes, page)
-    const resultCountQuery = TVTropes.resultCount(namespaces, tropes)
-    const tropeQuery = TVTropes.associatedTropes(namespaces, tropes, `%${tropeSearchQuery}%`)
-    const [namespaceFilters, results, resultCount, tropeFilters] = await Promise.all([namespacesQuery, resultsQuery, resultCountQuery, tropeQuery])
+    const namespaceFiltersQuery = TVTropes.articleCount(`%${namespaceSearchQuery}%`)
+    const resultsQuery  = TVTropes.search(namespaces, tropes, page)
+    const resultCountQuery  = TVTropes.resultCount(namespaces, tropes)
+    const tropeFiltersQuery  = TVTropes.associatedTropes(namespaces, tropes, `%${tropeSearchQuery}%`)
 
     // include all selected namespace filters
     const queryNamespaces = await Promise.all(namespaces.filter(name =>
