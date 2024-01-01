@@ -94,8 +94,16 @@ module.exports = {
   search: function(event) {
     event.preventDefault()
 
-    const formdata = new FormData(document.getElementById('search'))
-    const params = Array.from(formdata).map(f => f.join('=')).join('&')
+    const params = (() => {
+      if (event.target.href !== undefined) {
+        // event was fired by a page navigation
+        const url = new URL(event.target.href)
+        return url.search
+      }
+      
+      // event was fired by form submit
+      Array.from(FormData(document.getElementById('search'))).map(f => f.join('=')).join('&')
+    })()
 
     // update the browser history
     history.pushState({}, '', `/search?${params}`)
