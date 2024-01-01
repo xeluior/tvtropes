@@ -19,12 +19,6 @@ const TVTropes = {
    */
 
   /**
-   * @typedef {Object} ParameterizedStatement
-   * @property {String} statement
-   * @property {Array} parameters
-   */
-
-  /**
    * @typedef {Object} Trope
    * @property {String} namespace
    * @property {String} id

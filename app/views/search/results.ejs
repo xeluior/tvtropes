@@ -1,0 +1,30 @@
+<ul>
+  <% results.forEach(page => { %>
+    <li>
+      <a class="twikilink btn btn-link" href="https://tvtropes.org/pmwiki/pmwiki.php/<%= page.namespace %>/<%= page.id %>">
+        <%= page.namespace %> / <%= page.title %>
+      </a>
+    </li>
+  <% }) %>
+</ul>
+<nav aria-label="Search result pages">
+  <ul class='pagination'>
+    <li class='page-item<%= pages.first.current ? ' disabled': '' %>'>
+      <a class='page-link' href='<%= pages.first.href %>' aria-label="first">&lt;&lt;</a>
+    </li>
+    <li class='page-item<%= pages.previous.current ? ' disabled': '' %>'>
+      <a class='page-link' href='<%= pages.previous.href %>' aria-label="previous">&lt;</a>
+    </li>
+    <% pages.window.forEach(page => { %>
+      <li class='page-item<%= page.current ? ' active' : '' %>'>
+        <a class='page-link' href="<%= page.href %>"><%= page.number %></a>
+      </li>
+    <% }) %>
+    <li class='page-item<%= pages.next.current ? ' disabled': '' %>'>
+      <a class='page-link' href='<%= pages.next.href %>' aria-label="next">&gt;</a>
+    </li>
+    <li class='page-item<%= pages.last.current ? ' disabled': '' %>'>
+      <a class='page-link' href='<%= pages.last.href %>' aria-label="last">&gt;&gt;</a>
+    </li>
+  </ul>
+</nav>

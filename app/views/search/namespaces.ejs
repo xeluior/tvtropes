@@ -1,0 +1,16 @@
+<% namespaces.forEach(namespace => { %>
+  <div class='form-check'>
+    <input
+      form="search"
+      name="n"
+      type="checkbox"
+      class='form-check-input'
+      id="<%= namespace.namespace %>"
+      value="<%= namespace.namespace %>"
+      <% if (namespace.selected) { %>
+        checked
+      <% } %>
+    />
+    <label for="<%= namespace.namespace %>"><%= namespace.namespace %> (<%= namespace.articles %>)</label>
+  </div>
+<% }) %>

@@ -1,0 +1,16 @@
+<% tropes.forEach(trope => { %>
+  <div clas='form-check'>
+    <input
+      form="search"
+      name="t"
+      type="checkbox"
+      class='form-check-input'
+      value="<%= trope.id %>"
+      id="<%= trope.id %>"
+      <% if (trope.selected) { %>
+        checked
+      <% } %>
+    />
+    <label for="<%= trope.id %>"><%= trope.title %> (<%= trope.occurances %>)</label>
+  </div>
+<% }) %>

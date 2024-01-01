@@ -1,90 +1,31 @@
-<%- include('layouts/header.ejs') %>
-<div class='container'>
+<%- include('layouts/header') %>
+<div class='container mb-2'>
 <div class='row'>
 <search class='col-lg-3'>
   <div id="namespaces">
     <div class='input-group'>
-      <input form="search" name="nsq" type="text" placeholder="namespace" class='form-control' />
+      <input form="search" name="nsq" type="text" placeholder="namespace" class='form-control' id='nsq' />
       <button form="search" class="btn btn-secondary"><i class="bi bi-search"></i></button>
     </div>
-    <fieldset>
-      <% namespaces.forEach(namespace => { %>
-        <div class='form-check'>
-          <input
-            form="search"
-            name="n"
-            type="checkbox"
-            class='form-check-input'
-            id="<%= namespace.namespace %>"
-            value="<%= namespace.namespace %>"
-            <% if (namespace.selected) { %>
-              checked
-            <% } %>
-          />
-          <label for="<%= namespace.namespace %>"><%= namespace.namespace %> (<%= namespace.articles %>)</label>
-        </div>
-      <% }) %>
-    </fieldset>
   </div>
+  <fieldset id='namespace-filters'>
+    <%- include('search/namespaces', { namespaces }) %>
+  </fieldset>
   <div id="tropes">
     <div class='input-group'>
-      <input form="search" name="tsq" type="text" placeholder="trope" class='form-control' />
-      <button form="search" class="btn btn-secondary"><i class="bi bi-search"></i></button>
+      <input form="search" name="tsq" type="text" placeholder="trope" class='form-control' id='tsq' />
+      <button form="search" class="btn btn-secondary" id="tropes-submit"><i class="bi bi-search"></i></button>
     </div>
-    <fieldset>
-      <% tropes.forEach(trope => { %>
-        <div clas='form-check'>
-          <input
-            form="search"
-            name="t"
-            type="checkbox"
-            class='form-check-input'
-            value="<%= trope.id %>"
-            id="<%= trope.id %>"
-            <% if (trope.selected) { %>
-              checked
-            <% } %>
-          />
-          <label for="<%= trope.id %>"><%= trope.title %> (<%= trope.occurances %>)</label>
-        </div>
-      <% }) %>
-    </fieldset>
   </div>
+  <fieldset id="trope-filters">
+    <%- include('search/tropes', { tropes }) %>
+  </fieldset>
   <form id="search" action="/search" method="get" class='d-grid'>
     <input type="submit" class='btn btn-primary' />
   </form>
 </search>
-<main class='col-lg-9'>
-  <ul>
-    <% results.forEach(page => { %>
-      <li>
-        <a href="https://tvtropes.org/pmwiki/pmwiki.php/<%= page.namespace %>/<%= page.id %>">
-          <%= page.namespace %> / <%= page.title %>
-        </a>
-      </li>
-    <% }) %>
-  </ul>
-  <nav aria-label="Search result pages">
-    <ul class='pagination'>
-      <li class='page-item<%= pages.first.current ? ' disabled': '' %>'>
-        <a class='page-link' href='<%= pages.first.href %>' aria-label="first">&lt;&lt;</a>
-      </li>
-      <li class='page-item<%= pages.previous.current ? ' disabled': '' %>'>
-        <a class='page-link' href='<%= pages.previous.href %>' aria-label="previous">&lt;</a>
-      </li>
-      <% pages.window.forEach(page => { %>
-        <li class='page-item<%= page.current ? ' active' : '' %>'>
-          <a class='page-link' href="<%= page.href %>"><%= page.number %></a>
-        </li>
-      <% }) %>
-      <li class='page-item<%= pages.next.current ? ' disabled': '' %>'>
-        <a class='page-link' href='<%= pages.next.href %>' aria-label="next">&gt;</a>
-      </li>
-      <li class='page-item<%= pages.last.current ? ' disabled': '' %>'>
-        <a class='page-link' href='<%= pages.last.href %>' aria-label="last">&gt;&gt;</a>
-      </li>
-    </ul>
-  </nav>
+<main id='results' class='col-lg-9'>
+  <%- include('search/results', { results, pages }) %>
 </main>
 </div>
 </div>
