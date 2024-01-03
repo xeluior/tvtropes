@@ -1,0 +1,18 @@
+<li
+  <% if (page.current) { %>
+    class='page-item disabled'
+  <% } else { %>
+    class='page-item'
+  <% } %>
+>
+  <a
+    class='page-link'
+    href='<%= page.href %>'
+    aria-label="first"
+    <% if (page.current) { %>
+      tabindex="-1"
+    <% } %>
+   >
+     <%= text %>
+   </a>
+</li>
