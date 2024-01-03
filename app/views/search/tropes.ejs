@@ -11,6 +11,11 @@
         checked
       <% } %>
     />
-    <label for="<%= trope.id %>"><%= trope.title %> (<%= trope.occurances %>)</label>
+    <label for="<%= trope.id %>">
+      <%= trope.title %> (<%= trope.occurances %>)
+      <sup>
+        <a href="https://tvtropes.org/pmwiki/pmwiki.php/Main/<%= trope.id %>">?</a>
+      </sup>
+    </label>
   </div>
 <% }) %>
