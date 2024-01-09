@@ -13,7 +13,15 @@
     <%- include('pagelink', { page: pages.previous, text: "<" }) %>
     <% pages.window.forEach(page => { %>
       <li class='page-item<%= page.current ? ' active' : '' %>'>
-        <a class='page-link' href="<%= page.href %>"><%= page.number %></a>
+        <a
+          class='page-link'
+          href="<%= page.href %>"
+          hx-get="<%= page.href.replace('/search', '/results') %>"
+          hx-target="#results"
+          hx-push-url="<%= page.href %>"
+        >
+          <%= page.number %>
+        </a>
       </li>
     <% }) %>
     <%- include('pagelink', { page: pages.next, text: ">" }) %>

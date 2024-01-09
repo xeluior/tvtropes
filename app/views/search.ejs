@@ -2,25 +2,25 @@
 <div class='container mb-4'>
 <div class='row'>
 <search class='col-lg-3'>
-  <div id="namespaces">
+  <form hx-get="/articlecount" hx-include="[name='n']" hx-target="#namespace-filters">
     <div class='input-group'>
       <input form="search" name="nsq" type="text" placeholder="namespace" class='form-control' id='nsq' />
       <button form="search" class="btn btn-secondary"><i class="bi bi-search"></i></button>
     </div>
-  </div>
+  </form>
   <fieldset id='namespace-filters'>
     <%- include('search/namespaces', { namespaces }) %>
   </fieldset>
-  <div id="tropes">
+  <form hx-get="/tropes" hx-target="#trope-filters" hx-include="[name='t'], [name='n']">
     <div class='input-group'>
-      <input form="search" name="tsq" type="text" placeholder="trope" class='form-control' id='tsq' />
-      <button form="search" class="btn btn-secondary" id="tropes-submit"><i class="bi bi-search"></i></button>
+      <input name="tsq" type="text" placeholder="trope" class='form-control' id='tsq' />
+      <button class="btn btn-secondary" id="tropes-submit"><i class="bi bi-search"></i></button>
     </div>
-  </div>
+  </form>
   <fieldset id="trope-filters">
     <%- include('search/tropes', { tropes }) %>
   </fieldset>
-  <form id="search" action="/search" method="get" class='d-grid'>
+  <form id="search" hx-get="/results" hx-target="#results" class='d-grid'>
     <input type="submit" class='btn btn-primary' />
   </form>
 </search>
