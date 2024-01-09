@@ -8,7 +8,9 @@
   <a
     class='page-link'
     href='<%= page.href %>'
-    aria-label="first"
+    hx-get="<%= page.href.replace('/search', '/results') %>"
+    hx-target="#results"
+    hx-push-url="<%= page.href %>"
     <% if (page.current) { %>
       tabindex="-1"
     <% } %>
